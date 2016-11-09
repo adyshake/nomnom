@@ -14,7 +14,7 @@ $ python nomnom configure
 
 ### :sparkles: Surprise me
 ```bash
-$ pytohn nomnom surprise
+$ python nomnom surprise
 ```
 
 ### :question: Help
