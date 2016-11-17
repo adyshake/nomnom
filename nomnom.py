@@ -4,6 +4,7 @@ nomnom is a command line tool to browse zomato straight from your terminal
 Usage:
 nomnom surprise
 nomnom configure
+nomnom menu <restaurant-id>
 nomnom (-h | --help)
 nomnom
 Options:
@@ -72,12 +73,42 @@ def surprise():
     except:
         print("Error requesting")
 
+def menu(restaurant_id):
+    import re
+    import urllib.request
+    url = 'https://developers.zomato.com/api/v2.1/restaurant?res_id={0}'.format(restaurant_id)
+    print(url)
+    headers = {'Accept' : 'application/json', 'user_key': config['api_key'], 'User-Agent': 'curl/7.35.0'}
+    response = requests.get(url, headers = headers)
+    if response.status_code == 200:
+        data = response.json()
+        print(data['menu_url'])
+        html_source = requests.get(data['menu_url'])
+        '''
+        #html_source = open("file.txt", "r", encoding="utf8").read()
+        x = re.search('zomato\.menuPage(.+}]);', html_source)
+        matched_text = x.group(0)
+        matched_text = matched_text[matched_text.find("["): -1]
+        print(matched_text)
+        menu_items = json.loads(matched_text)
+        i = 0
+        while(i < len(menu_items)):
+            cur_menu_url = menu_items[i]['url']
+            print(cur_menu_url)
+            urllib.request.urlretrieve(cur_menu_url, str(i) + ".jpg")
+            i += 1
+        '''
+    else:
+        print("Error requesting, response code:"  + str(response.status_code))
+
 def main():
     arguments = docopt(__doc__, version = __version__)
     if arguments['configure']:
         configure()
     elif arguments['surprise']:
         surprise()
+    elif arguments['menu']:
+        menu(arguments['<restaurant-id>'])
     else:
         print(__doc__)
 
