@@ -4,6 +4,7 @@ nomnom is a command line tool to browse zomato straight from your terminal
 Usage:
 nomnom surprise
 nomnom configure
+nomnom test
 nomnom menu <restaurant-id>
 nomnom (-h | --help)
 nomnom
@@ -75,7 +76,6 @@ def surprise():
 
 def menu(restaurant_id):
     import re
-    import urllib.request
     url = 'https://developers.zomato.com/api/v2.1/restaurant?res_id={0}'.format(restaurant_id)
     print(url)
     headers = {'Accept' : 'application/json', 'user_key': config['api_key'], 'User-Agent': 'curl/7.35.0'}
@@ -83,9 +83,18 @@ def menu(restaurant_id):
     if response.status_code == 200:
         data = response.json()
         print(data['menu_url'])
-        html_source = requests.get(data['menu_url'])
+        menu_response = requests.get(data['menu_url'])
+        html_source = menu_response.text
         '''
-        #html_source = open("file.txt", "r", encoding="utf8").read()
+        To print a string it must first be converted from pure Unicode to the
+        byte sequences supported by your output device. This requires an encode
+        to the proper character set, which Python has identified as cp850 - the
+        Windows Console default.
+        Starting with Python 3.4 you can set the Windows console to use UTF-8
+        with the following command issued at the command prompt:
+
+        chcp 65001
+        '''
         x = re.search('zomato\.menuPage(.+}]);', html_source)
         matched_text = x.group(0)
         matched_text = matched_text[matched_text.find("["): -1]
@@ -97,9 +106,18 @@ def menu(restaurant_id):
             print(cur_menu_url)
             urllib.request.urlretrieve(cur_menu_url, str(i) + ".jpg")
             i += 1
-        '''
     else:
         print("Error requesting, response code:"  + str(response.status_code))
+
+def test():
+    from PIL import Image, ImageEnhance, ImageFilter
+    import pytesseract
+    menu_image = Image.open('./cache/11520/10.jpg')
+    #menu_image.filter(ImageFilter.SHARPEN)
+    menu_image = menu_image.convert('1', dither = 0)
+    menu_image.show()
+    text = pytesseract.image_to_string(menu_image)
+    print(text)
 
 def main():
     arguments = docopt(__doc__, version = __version__)
@@ -109,6 +127,8 @@ def main():
         surprise()
     elif arguments['menu']:
         menu(arguments['<restaurant-id>'])
+    elif arguments['test']:
+        test()
     else:
         print(__doc__)
 
