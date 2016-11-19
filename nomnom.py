@@ -47,13 +47,13 @@ def configure():
             print("Error requesting, response code:"  + str(response.status_code))
     except:
         print("Error requesting")
-        
+
     if city_id:
         configuration_settings = {"api_key": api_key, "budget": budget, "latitude": lat, "longitude": lon}
         configure_file.write(json.dumps(configuration_settings))
     else:
         print("Could not retrieve city id for specified coordinates")
-            
+
 def surprise():
     url = 'https://developers.zomato.com/api/v2.1/geocode?lat={0}&lon={1}'.format(config['latitude'],config['longitude'])
     try:
@@ -76,6 +76,8 @@ def surprise():
 
 def menu(restaurant_id):
     import re
+    import os
+    from urllib.parse import urlsplit
     url = 'https://developers.zomato.com/api/v2.1/restaurant?res_id={0}'.format(restaurant_id)
     print(url)
     headers = {'Accept' : 'application/json', 'user_key': config['api_key'], 'User-Agent': 'curl/7.35.0'}
@@ -83,7 +85,7 @@ def menu(restaurant_id):
     if response.status_code == 200:
         data = response.json()
         print(data['menu_url'])
-        menu_response = requests.get(data['menu_url'])
+        menu_response = requests.get(data['menu_url'], headers = {'User-Agent': 'Mozilla/5.0 (iPad; U; CPU OS 3_2_1 like Mac OS X; en-us) AppleWebKit/531.21.10 (KHTML, like Gecko) Mobile/7B405'})
         html_source = menu_response.text
         '''
         To print a string it must first be converted from pure Unicode to the
@@ -101,10 +103,15 @@ def menu(restaurant_id):
         print(matched_text)
         menu_items = json.loads(matched_text)
         i = 0
+        if not os.path.exists("image_cache/" + str(restaurant_id) + "/"):
+            os.makedirs("image_cache/" + str(restaurant_id) + "/")
         while(i < len(menu_items)):
             cur_menu_url = menu_items[i]['url']
             print(cur_menu_url)
-            urllib.request.urlretrieve(cur_menu_url, str(i) + ".jpg")
+            file_name = "image_cache/" + str(restaurant_id) + "/" + urlsplit(cur_menu_url)[2].split('/')[-1]
+            menu_image_file = requests.get(cur_menu_url)
+            with open(file_name, 'wb') as file:
+                file.write(menu_image_file.content)
             i += 1
     else:
         print("Error requesting, response code:"  + str(response.status_code))
@@ -112,7 +119,7 @@ def menu(restaurant_id):
 def test():
     from PIL import Image, ImageEnhance, ImageFilter
     import pytesseract
-    menu_image = Image.open('./cache/11520/10.jpg')
+    menu_image = Image.open('./image_cache/11520/10.jpg')
     #menu_image.filter(ImageFilter.SHARPEN)
     menu_image = menu_image.convert('1', dither = 0)
     menu_image.show()
