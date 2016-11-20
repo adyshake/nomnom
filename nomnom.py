@@ -108,10 +108,13 @@ def menu(restaurant_id):
         while(i < len(menu_items)):
             cur_menu_url = menu_items[i]['url']
             print(cur_menu_url)
+            suffix_list = ['jpg', 'png']
             file_name = "image_cache/" + str(restaurant_id) + "/" + urlsplit(cur_menu_url)[2].split('/')[-1]
+            file_suffix = file_name.split('.')[1]
             menu_image_file = requests.get(cur_menu_url)
-            with open(file_name, 'wb') as file:
-                file.write(menu_image_file.content)
+            if file_suffix in suffix_list and menu_image_file.status_code == requests.codes.ok:
+                with open(file_name, 'wb') as file:
+                    file.write(menu_image_file.content)
             i += 1
     else:
         print("Error requesting, response code:"  + str(response.status_code))
