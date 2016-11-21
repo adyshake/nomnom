@@ -4,7 +4,7 @@ nomnom is a command line tool to browse zomato straight from your terminal
 Usage:
 nomnom surprise
 nomnom configure
-nomnom test
+nomnom test <restaurant-id> <dish>
 nomnom menu <restaurant-id>
 nomnom (-h | --help)
 nomnom
@@ -19,14 +19,19 @@ import requests
 import random
 import json
 from tabulate import tabulate
+import sys
+
+__version__ = "0.0.2"
+headers = {}
 
 try:
     config = json.loads(open("./config.json", "r").read())
+    headers = {'Accept' : 'application/json', 'user_key': config['api_key'], 'User-Agent': 'curl/7.35.0'}
 except:
     print("Failed to find configuration file, run configure()")
+    print(sys.exc_info()[1])
 
-__version__ = "0.0.2"
-headers = {'Accept' : 'application/json', 'user_key': config['api_key'], 'User-Agent': 'curl/7.35.0'}
+
 
 def configure():
     configure_file = open("config.json", "w")
@@ -47,6 +52,7 @@ def configure():
             print("Error requesting, response code:"  + str(response.status_code))
     except:
         print("Error requesting")
+        print(sys.exc_info()[1])
 
     if city_id:
         configuration_settings = {"api_key": api_key, "budget": budget, "latitude": lat, "longitude": lon}
@@ -73,6 +79,7 @@ def surprise():
             print("Error requesting, response code:"  + str(response.status_code))
     except:
         print("Error requesting")
+        print(sys.exc_info()[1])
 
 def menu(restaurant_id):
     import re
@@ -119,15 +126,45 @@ def menu(restaurant_id):
     else:
         print("Error requesting, response code:"  + str(response.status_code))
 
-def test():
+import queue as queue
+q = queue.Queue()
+        
+def check_for_dish(image_file, restaurant_id, dish):
     from PIL import Image, ImageEnhance, ImageFilter
     import pytesseract
-    menu_image = Image.open('./image_cache/11520/10.jpg')
+    from fuzzywuzzy import fuzz
+    
+    print(image_file)
+    menu_image = Image.open('./image_cache/' + str(restaurant_id) + '/' + image_file)
     #menu_image.filter(ImageFilter.SHARPEN)
-    menu_image = menu_image.convert('1', dither = 0)
-    menu_image.show()
+    menu_image = menu_image.convert('L', dither = 0)
+    #menu_image.show()
     text = pytesseract.image_to_string(menu_image)
-    print(text)
+    text = text.split('\n')
+    print("Finished computing OCR")
+    for cur_line in text:
+        if(cur_line != ' '):
+            compare_ratio = fuzz.partial_ratio(dish, cur_line)
+            if compare_ratio >= 80:
+                print(cur_line)
+                q.put(dish + " is available!")
+        
+def test(restaurant_id, dish):
+    from os import listdir
+    from os.path import isfile, join
+    
+    import threading
+    image_path = "./image_cache/" + str(restaurant_id) + "/"
+    image_list = [f for f in listdir(image_path) if isfile(join(image_path, f))]
+    for image_file in image_list:
+        print("lol")
+        t = threading.Thread(target = check_for_dish, args = (image_file, restaurant_id, dish))
+        t.daemon = True
+        t.start()
+
+    s = q.get()
+    print(s)
+            
 
 def main():
     arguments = docopt(__doc__, version = __version__)
@@ -138,7 +175,7 @@ def main():
     elif arguments['menu']:
         menu(arguments['<restaurant-id>'])
     elif arguments['test']:
-        test()
+        test(arguments['<restaurant-id>'], arguments['<dish>'])
     else:
         print(__doc__)
 
