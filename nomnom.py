@@ -4,6 +4,7 @@ nomnom is a command line tool to browse zomato straight from your terminal
 Usage:
 nomnom surprise
 nomnom configure
+nomnom search <restaurant-name>
 nomnom test <restaurant-id> <dish>
 nomnom menu <restaurant-id>
 nomnom (-h | --help)
@@ -30,8 +31,6 @@ try:
 except:
     print("Failed to find configuration file, run configure()")
     print(sys.exc_info()[1])
-
-
 
 def configure():
     configure_file = open("config.json", "w")
@@ -128,12 +127,12 @@ def menu(restaurant_id):
 
 import queue as queue
 q = queue.Queue()
-        
+
 def check_for_dish(image_file, restaurant_id, dish):
     from PIL import Image, ImageEnhance, ImageFilter
     import pytesseract
     from fuzzywuzzy import fuzz
-    
+
     print(image_file)
     menu_image = Image.open('./image_cache/' + str(restaurant_id) + '/' + image_file)
     #menu_image.filter(ImageFilter.SHARPEN)
@@ -148,11 +147,11 @@ def check_for_dish(image_file, restaurant_id, dish):
             if compare_ratio >= 80:
                 print(cur_line)
                 q.put(dish + " is available!")
-        
+
 def test(restaurant_id, dish):
     from os import listdir
     from os.path import isfile, join
-    
+
     import threading
     image_path = "./image_cache/" + str(restaurant_id) + "/"
     image_list = [f for f in listdir(image_path) if isfile(join(image_path, f))]
@@ -164,12 +163,34 @@ def test(restaurant_id, dish):
 
     s = q.get()
     print(s)
-            
+
+def search(restaurant_name):
+    url = 'https://developers.zomato.com/api/v2.1/search?q={0}&count=10&lat={1}&lon={2}'.format(restaurant_name, config['latitude'],config['longitude'])
+    try:
+        response = requests.get(url, headers = headers)
+        if response.status_code == requests.codes.ok:
+            data = response.json()
+            restaurants = data['restaurants']
+            res_len = len(restaurants)
+            i = 0
+            table = []
+            while(i < res_len):
+                cur_restaurant = restaurants[i]['restaurant']
+                table.append([ cur_restaurant['id'] , cur_restaurant["name"], cur_restaurant["currency"] + " " + str(float(cur_restaurant['average_cost_for_two'])/2), cur_restaurant["user_rating"]["aggregate_rating"], cur_restaurant["location"]["address"][:50] ])
+                i = i + 1
+            print(tabulate(table, headers=["ID", "Name", "Budget", "Rating", "Location"]))
+        else:
+             print("Error requesting, response code:"  + str(response.status_code))
+    except:
+        print('Error requesting')
+        print(sys.exc_info()[1])
 
 def main():
     arguments = docopt(__doc__, version = __version__)
     if arguments['configure']:
         configure()
+    elif arguments['search']:
+        search(arguments['<restaurant-name>'])
     elif arguments['surprise']:
         surprise()
     elif arguments['menu']:
