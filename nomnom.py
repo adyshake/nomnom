@@ -7,6 +7,7 @@ nomnom configure
 nomnom search <restaurant-name>
 nomnom test <restaurant-id> <dish>
 nomnom menu <restaurant-id>
+nomnom reviews <restaurant-id>
 nomnom (-h | --help)
 nomnom
 Options:
@@ -185,6 +186,30 @@ def search(restaurant_name):
         print('Error requesting')
         print(sys.exc_info()[1])
 
+def reviews(restaurant_id):
+    url = 'https://developers.zomato.com/api/v2.1/reviews?res_id={0}&count=5'.format(restaurant_id)
+    print(url)
+    try:
+        response = requests.get(url, headers = headers)
+        if response.status_code == requests.codes.ok:
+            data = response.json()
+            reviews = data['user_reviews']
+            rev_len = len(reviews)
+            i = 0
+            table = []
+            while(i < rev_len):
+                cur_review = reviews[i]['review']
+                print("Time: " + cur_review['review_time_friendly'])
+                print("Review: " + cur_review['review_text'])
+                print("Rating: " + str(cur_review['rating']))
+                print('\n')
+                i = i + 1
+        else:
+             print("Error requesting, response code:"  + str(response.status_code))
+    except:
+        print('Error requesting')
+        print(sys.exc_info()[1])
+        
 def main():
     arguments = docopt(__doc__, version = __version__)
     if arguments['configure']:
@@ -195,6 +220,8 @@ def main():
         surprise()
     elif arguments['menu']:
         menu(arguments['<restaurant-id>'])
+    elif arguments['reviews']:
+        reviews(arguments['<restaurant-id>'])
     elif arguments['test']:
         test(arguments['<restaurant-id>'], arguments['<dish>'])
     else:
