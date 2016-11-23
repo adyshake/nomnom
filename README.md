@@ -12,6 +12,11 @@
 $ python nomnom configure
 ```
 
+### :sparkles: Search
+```bash
+$ python nomnom search <restaurant-name>
+```
+
 ### :sparkles: Surprise me
 ```bash
 $ python nomnom surprise
